@@ -26,11 +26,8 @@ const app = express();
 const db = knex({
 	client: 'pg',
 	connection: {
-		host: '127.0.0.1',
-		port: 5432,
-		user: 'postgres',
-		password: '9731',
-		database: 'mydatabase',
+		connectionString: process.env.DATABASE_URL,
+		ssl: { rejectUnauthorized: false }
 	},
 	pool: {
 		min: 2,
@@ -302,6 +299,7 @@ app.post('/generate-image', async (req, res) => {
 	}
 });
 
-app.listen(3000, () => {
-	console.log('Server is running on port 3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+	console.log(`Server is running on port ${PORT}`);
 });
