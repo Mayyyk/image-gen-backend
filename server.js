@@ -46,11 +46,11 @@ const test = () => {
 		});
 };
 
-test();
+// test();
 
 app.use(
 	cors({
-		origin: ['https://brain-sigma-pearl.vercel.app', 'http://localhost:3001'],
+		origin: ['https://brain-sigma-pearl.vercel.app', 'http://localhost:3000'],
 		methods: ['GET', 'POST', 'PUT', 'DELETE'],
 		credentials: true,
 		allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
