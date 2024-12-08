@@ -23,17 +23,17 @@ console.log('Environment check:', {
 
 const app = express();
 
+const PORT = process.env.PORT || 3000;
+const DATABASE_URL = process.env.DATABASE_URL;
+
 const db = knex({
 	client: 'pg',
 	connection: {
 		connectionString: process.env.DATABASE_URL,
-		ssl: { rejectUnauthorized: false }
+		ssl: {
+			rejectUnauthorized: false,
+		},
 	},
-	pool: {
-		min: 2,
-		max: 10,
-	},
-	debug: process.env.NODE_ENV === 'development',
 });
 
 const test = () => {
@@ -43,7 +43,6 @@ const test = () => {
 		})
 		.catch((err) => {
 			console.error('Error connecting to the database:', err);
-			process.exit(1);
 		});
 };
 
@@ -51,7 +50,7 @@ test();
 
 app.use(
 	cors({
-		origin: 'http://localhost:3001',
+		origin: ['https://brain-sigma-pearl.vercel.app', 'http://localhost:3001'],
 		methods: ['GET', 'POST', 'PUT', 'DELETE'],
 		credentials: true,
 		allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
@@ -199,9 +198,11 @@ const testReplicate = async () => {
 // await testReplicate();
 
 app.post('/generate-image', async (req, res) => {
+	console.log('Received generation request:', req.body);
+
 	try {
-		const { prompt, id } = req.body;  // Get both prompt and user id
-		
+		const { prompt, id } = req.body; // Get both prompt and user id
+
 		if (!prompt) {
 			return res.status(400).json({ error: 'Prompt is required' });
 		}
@@ -214,16 +215,17 @@ app.post('/generate-image', async (req, res) => {
 
 		// Generate image with Stable Diffusion
 		const prediction = await replicate.predictions.create({
-			version: "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf",
+			version:
+				'db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf',
 			input: {
 				prompt: prompt,
 				num_outputs: 1,
 				num_inference_steps: 30,
 				guidance_scale: 7.5,
-				scheduler: "DPMSolverMultistep",
+				scheduler: 'DPMSolverMultistep',
 				width: 768,
-				height: 768
-			}
+				height: 768,
+			},
 		});
 
 		console.log('Prediction started:', prediction);
@@ -231,7 +233,7 @@ app.post('/generate-image', async (req, res) => {
 		let finalPrediction = await replicate.predictions.get(prediction.id);
 		let attempts = 0;
 		const maxAttempts = 30;
-		
+
 		while (attempts < maxAttempts) {
 			console.log(
 				`Waiting for prediction... Status: ${finalPrediction.status} (Attempt ${
@@ -240,7 +242,6 @@ app.post('/generate-image', async (req, res) => {
 			);
 
 			if (finalPrediction.status === 'succeeded') {
-				
 				break;
 			}
 
@@ -256,9 +257,9 @@ app.post('/generate-image', async (req, res) => {
 			finalPrediction = await replicate.predictions.get(prediction.id);
 			attempts++;
 		}
-        if (attempts >= maxAttempts) {
-            throw new Error('Image generation timed out after 30 seconds');
-        }
+		if (attempts >= maxAttempts) {
+			throw new Error('Image generation timed out after 30 seconds');
+		}
 		// If image generation was successful, update entries
 		if (finalPrediction.status === 'succeeded') {
 			try {
@@ -271,17 +272,16 @@ app.post('/generate-image', async (req, res) => {
 					return res.status(404).json({ error: 'User not found' });
 				}
 
-				const imageUrl = Array.isArray(finalPrediction.output) 
-					? finalPrediction.output[0] 
+				const imageUrl = Array.isArray(finalPrediction.output)
+					? finalPrediction.output[0]
 					: finalPrediction.output;
 
 				// Return both the image URL and updated user data
-				res.json({ 
+				res.json({
 					imageUrl,
 					entries: entries[0].entries,
-					name: entries[0].name
+					name: entries[0].name,
 				});
-
 			} catch (err) {
 				console.error('Database error:', err);
 				res.status(400).json({ error: 'Unable to update entries' });
@@ -289,17 +289,15 @@ app.post('/generate-image', async (req, res) => {
 		} else {
 			throw new Error('Image generation timed out');
 		}
-
 	} catch (error) {
 		console.error('Generation error:', error);
-		res.status(500).json({ 
+		res.status(500).json({
 			error: 'Failed to generate image',
-			details: error.message
+			details: error.message,
 		});
 	}
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
 	console.log(`Server is running on port ${PORT}`);
 });
